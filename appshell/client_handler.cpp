@@ -15,6 +15,8 @@
 #include "appshell/appshell_extensions.h"
 #include "appshell/command_callbacks.h"
 
+bool didOpenDevTools = false;
+
 // Custom menu command Ids.
 enum client_menu_ids {
   CLIENT_ID_SHOW_DEVTOOLS   = MENU_ID_USER_FIRST,
@@ -189,10 +191,27 @@ bool ClientHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
                                      const CefString& message,
                                      const CefString& source,
                                      int line) {
+
+  // Display a load error message.
   // Don't write the message to a console.log file. Instead, we'll just
   // return false here so the message gets written to the console (output window
   // in xcode, or console window in dev tools)
   
+  // Open the developer tools when the first uncaught exception is thrown
+  // TODO: Create a ShowDeveloperTools function that either opens
+  //       the developer tools or focuses the window that shows them
+  //       For that, we need to know whether the dev tools are already being used
+  //       It appears there's currently no CEF API for that, though.
+  if (!didOpenDevTools && message.length() >= 8) {
+    std::string prefix = std::string(message).substr(0, 8);
+    std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::tolower);
+    if (prefix.compare("uncaught") == 0) {
+      ExtensionString url(browser->GetHost()->GetDevToolsURL(true));
+      OpenLiveBrowser(url, false);
+      didOpenDevTools = true;
+    }
+  }
+
 /*
   REQUIRE_UI_THREAD();
 
